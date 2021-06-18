@@ -1,0 +1,62 @@
+// (C) 2020, Scott Nelle.
+
+// Trim plus is a simple trim plugin, with optional saturation. It's designed to
+// insert wherever you need a level trim in the signal path.
+
+// NO WARRANTY IS GRANTED. THIS PLUG-IN IS PROVIDED ON AN "AS IS" BASIS, WITHOUT
+// WARRANTY OF ANY KIND. NO LIABILITY IS GRANTED, INCLUDING, BUT NOT LIMITED TO,
+// ANY DIRECT OR INDIRECT,  SPECIAL,  INCIDENTAL OR CONSEQUENTIAL DAMAGE ARISING
+// OUT OF  THE  USE  OR INABILITY  TO  USE  THIS PLUG-IN,  COMPUTER FAILTURE  OF
+// MALFUNCTION INCLUDED.  THE USE OF THE SOURCE CODE,  EITHER  PARTIALLY  OR  IN
+// TOTAL, IS ONLY GRANTED,  IF USED IN THE SENSE OF THE AUTHOR'S INTENTION,  AND
+// USED WITH ACKNOWLEDGEMENT OF THE AUTHOR. FURTHERMORE IS THIS PLUG-IN A  THIRD
+// PARTY CONTRIBUTION,  EVEN IF INCLUDED IN REAPER(TM),  COCKOS INCORPORATED  OR
+// ITS AFFILIATES HAVE NOTHING TO DO WITH IT.  LAST BUT NOT LEAST, BY USING THIS
+// PLUG-IN YOU RELINQUISH YOUR CLAIM TO SUE IT'S AUTHOR, AS WELL AS THE CLAIM TO
+// ENTRUST SOMEBODY ELSE WITH DOING SO.
+
+desc:Trim+
+desc:Trim+ [Scott Nellé]
+//tags: processing amplitude gain saturation trim volume
+//author: Scott Nellé
+
+slider1:ingain=0<0,12,.2>Pre (dB)
+slider2:character=0<0,1,1{Gentle,Push}>Character
+slider3:outgain=0<-24,12,.2>Post (dB)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+@slider
+saturation=(character+1)*50;
+foo=saturation/200*$pi;
+bar=sin(saturation/200*$pi);
+
+@sample
+// Calculate input and output modifications.
+pregain = 10 ^ (ingain / 20);
+//autogain = 10 ^ (-ingain / 20); // This sounds more accurate for autogain.
+autogain = 10 ^ (-(ingain*0.9) / 20); // This allows a small volume boost, perceived as better.
+output = 10 ^ (outgain / 20);
+
+ingain > 0 ? (
+  // Apply input gain.
+  spl0 *= pregain;
+  spl1 *= pregain;
+
+  // Saturation stage.
+  spl0 = min(max( sin(max(min(spl0,1),-1)*foo)/bar ,-1) ,1);
+  spl1 = min(max( sin(max(min(spl1,1),-1)*foo)/bar ,-1) ,1);
+  
+  // Apply gain compensation.
+  spl0 *= autogain;
+  spl1 *= autogain;
+);
+
+// Apply output gain.
+spl0 *= output;
+spl1 *= output;
